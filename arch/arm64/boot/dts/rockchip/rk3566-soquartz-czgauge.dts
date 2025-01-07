@@ -77,20 +77,20 @@
 	assigned-clock-rates = <89480000>;
 };
 
-&dsi0 {
+&dsi1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	status = "okay";
 
 	ports {
-		dsi0_in: port@0 {
+		dsi1_in: port@0 {
 			reg = <0>;
-			dsi0_in_vp1: endpoint {
-				remote-endpoint = <&vp1_out_dsi0>;
+			dsi1_in_vp1: endpoint {
+				remote-endpoint = <&vp1_out_dsi1>;
 			};
 		};
 
-		dsi0_out: port@1 {
+		dsi1_out: port@1 {
 			reg = <1>;
 			mipi_out_panel: endpoint {
 				remote-endpoint = <&mipi_in_panel>;
@@ -114,21 +114,17 @@
 	};
 };
 
-/* Assign the VOP's clock parent to PLL_VPLL, required according to macromorgan */
-&vop {
-	assigned-clocks = <&cru DCLK_VOP0>, <&cru DCLK_VOP1>;
-	assigned-clock-parents = <&pmucru PLL_HPLL>, <&cru PLL_VPLL>;
+&dsi_dphy1 {
 	status = "okay";
 };
-
 
 &vp1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	vp1_out_dsi0: endpoint@ROCKCHIP_VOP2_EP_MIPI0 {
-		reg = <ROCKCHIP_VOP2_EP_MIPI0>;
-		remote-endpoint = <&dsi0_in_vp1>;
+	vp1_out_dsi1: endpoint@ROCKCHIP_VOP2_EP_MIPI1 {
+		reg = <ROCKCHIP_VOP2_EP_MIPI1>;
+		remote-endpoint = <&dsi1_in_vp1>;
 	};
 };
 
