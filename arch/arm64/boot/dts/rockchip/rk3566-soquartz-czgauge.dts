@@ -5,7 +5,7 @@
 #include "rk3566-soquartz.dtsi"
 
 / {
-	model = "Pine64 SOQuartz on Model A carrier board";
+	model = "CZGauge - RK3566 SOQuartz";
 	compatible = "pine64,soquartz-model-a", "pine64,soquartz", "rockchip,rk3566";
 
 	aliases {
@@ -65,47 +65,16 @@
 		regulator-max-microvolt = <12000000>;
 		vin-supply = <&vcc12v_dcin>;
 	};
-	
-	/* LCD ANDREW backlight controller */
-	backlight: backlight {
-		compatible = "pwm-backlight";
-		brightness-levels = <0 4 8 16 32 64 128 255>;
-		default-brightness-level = <5>;
-		pwms = <&pwm14 0 1000000 0>;
-	};
-	
-	/* LCD ANDREW vcc3v3_lcd0 is controlled by an enable GPIO */
-	vcc3v3_lcd0: vcc3v3-lcd0 {
-		compatible = "regulator-fixed";
-		enable-active-high;
-		gpio = <&gpio4 RK_PA0 GPIO_ACTIVE_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&lcd0_pwren_h>;
-		regulator-name = "vcc3v3_lcd0";
-		regulator-always-on;
-		regulator-boot-on;
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		vin-supply = <&vcc_3v3>;
-	};
-	
-	/* LCD ANDREW AVDD9V6 is a boost converter output at 9.6 volts derived from vcc3v3_lcd0 */
-	vdda9v6_lcd0: vdda9v6-lcd0 {
-		compatible = "regulator-fixed";
-		regulator-name = "vdda9v6_lcd0";
-		regulator-min-microvolt = <9600000>;
-		regulator-max-microvolt = <9600000>;
-		vin-supply = <&vcc3v3_lcd0>;
-	};
 };
 
 /* LCD ANDREW 
  * Workaround for RK3566 weirdness:
  * We need to set PLL_VPLL close to (above) or a multiple of our panel's pixel clock
+ * For the 800r panel, 892h x 836v x 60hz x 2 = 89480000hz
  */
 &cru {
 	assigned-clocks = <&cru PLL_VPLL>;
-	assigned-clock-rates = <1100000000>;
+	assigned-clock-rates = <89480000>;
 };
 
 &dsi0 {
@@ -113,43 +82,35 @@
 	#size-cells = <0>;
 	status = "okay";
 
-	mipi_panel: panel@0 {
-		compatible = "feiyang,fy07024di26a30d";
-		reg = <0>;
-		avdd-supply = <&vdda9v6_lcd0>;
-		backlight = <&backlight>;
-		dvdd-supply = <&vcc3v3_lcd0>;
+	ports {
+		dsi0_in: port@0 {
+			reg = <0>;
+			dsi0_in_vp1: endpoint {
+				remote-endpoint = <&vp1_out_dsi0>;
+			};
+		};
 
-		ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			port@0 {
-				reg = <0>;
-
-				mipi_in_panel: endpoint {
-					remote-endpoint = <&dsi0_out_con>;
-				};
+		dsi0_out: port@1 {
+			reg = <1>;
+			mipi_out_panel: endpoint {
+				remote-endpoint = <&mipi_in_panel>;
 			};
 		};
 	};
-};
 
-&dsi0_in {
-	#address-cells = <1>;
-	#size-cells = <0>;
+	panel: panel@0 {
+		compatible = "tianma,tm034xvzp01";
+		reg = <0>;
+		power-supply = <&vcc5v0_sys>;
+		reset-gpios = <&gpio4 RK_PA0 GPIO_ACTIVE_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&lcd_rst>;
 
-	dsi0_in_vp1: endpoint {
-		remote-endpoint = <&vp1_out_dsi0>;
-	};
-};
-
-&dsi0_out {
-	#address-cells = <1>;
-	#size-cells = <0>;
-
-	dsi0_out_con: endpoint {
-		remote-endpoint = <&mipi_in_panel>;
+		port {
+			mipi_in_panel: endpoint {
+				remote-endpoint = <&mipi_out_panel>;
+			};
+		};
 	};
 };
 
@@ -157,6 +118,7 @@
 &vop {
 	assigned-clocks = <&cru DCLK_VOP0>, <&cru DCLK_VOP1>;
 	assigned-clock-parents = <&pmucru PLL_HPLL>, <&cru PLL_VPLL>;
+	status = "okay";
 };
 
 
@@ -209,16 +171,20 @@
 	status = "okay";	/* Enable the I2C node of rk356x.dtsi */
 
 	touchscreen@48 { /* Touchscreen at 0x48 */
-        compatible = "himax,hx8526e", "himax,hx852es";
-        reg = <0x48>;
-        interrupt-parent = <&gpio3>;
-        interrupts = <RK_PC6 IRQ_TYPE_EDGE_FALLING>;
+        	compatible = "himax,hx8526e", "himax,hx852es";
+        	reg = <0x48>;
+
+        	interrupt-parent = <&gpio3>;
+        	interrupts = <RK_PC6 IRQ_TYPE_EDGE_FALLING>;
 		irq-gpios = <&gpio3 RK_PC6 GPIO_ACTIVE_HIGH>;
+
 		pinctrl-names = "default";
 		pinctrl-0 = <&touchscreen_reset_l &touchscreen_int_l>;
-        reset-gpios = <&gpio4 RK_PA4 GPIO_ACTIVE_LOW>;
-        vcca-supply = <&vcc_3v3>;
-        vccd-supply = <&vcc_3v3>;
+
+        	reset-gpios = <&gpio4 RK_PA4 GPIO_ACTIVE_LOW>;
+
+        	vcca-supply = <&vcc_3v3>;
+        	vccd-supply = <&vcc_3v3>;
 	};
 };
 
@@ -241,18 +207,9 @@
 };
 
 &pinctrl {
-	lcd0 {
-		lcd0_pwren_h: lcd0-pwren-h {
+	gpio-lcd {
+		lcd_rst: lcd-rst {
 			rockchip,pins = <4 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
-	};
-
-	/* Copied from rk3568-pinctrl.dtsi */
-	pwm14 {
-		pwm14m1_pins: pwm14m1-pins {
-			rockchip,pins =
-				/* pwm14_m1 */
-				<4 RK_PA2 1 &pcfg_pull_none>;
 		};
 	};
 
