@@ -67,14 +67,11 @@
 	};
 };
 
-/* LCD ANDREW 
- * Workaround for RK3566 weirdness:
- * We need to set PLL_VPLL close to (above) or a multiple of our panel's pixel clock
- * For the 800r panel, 892h x 836v x 60hz x 2 = 89480000hz
- */
 &cru {
-	assigned-clocks = <&cru PLL_VPLL>;
-	assigned-clock-rates = <89480000>;
+	assigned-clocks = <&pmucru CLK_RTC_32K>, <&cru PLL_GPLL>,
+			  <&pmucru PLL_PPLL>, <&cru PLL_VPLL>;
+	assigned-clock-rates = <32768>, <1200000000>,
+			       <200000000>, <128000000>;
 };
 
 &dsi0 {
